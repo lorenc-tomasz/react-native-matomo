@@ -1,21 +1,4 @@
-import { NativeModules, Platform } from 'react-native';
-
-const LINKING_ERROR =
-  `The package '@mccsoft/react-native-matomo' doesn't seem to be linked. Make sure: \n\n` +
-  Platform.select({ ios: "- You have run 'pod install'\n", default: '' }) +
-  '- You rebuilt the app after installing the package\n' +
-  '- You are not using Expo Go\n';
-
-const ReactNativeMatomo = NativeModules.ReactNativeMatomo
-  ? NativeModules.ReactNativeMatomo
-  : new Proxy(
-      {},
-      {
-        get() {
-          throw new Error(LINKING_ERROR);
-        },
-      }
-    );
+import NativeReactNativeMatomo from './NativeReactNativeMatomo';
 
 /** Default instance ID used for backward compatibility */
 const DEFAULT_INSTANCE_ID = 'default';
@@ -80,16 +63,12 @@ export class MatomoTracker {
     cachedQueue?: boolean
   ): Promise<void> {
     const normalizedUrl = normalizeUrl(apiUrl);
-    // Only pass cachedQueue on iOS - Android SDK always uses cached queue
-    if (Platform.OS === 'ios') {
-      return ReactNativeMatomo.initialize(
-        this.instanceId,
-        normalizedUrl,
-        siteId,
-        !!cachedQueue
-      );
-    }
-    return ReactNativeMatomo.initialize(this.instanceId, normalizedUrl, siteId);
+    return NativeReactNativeMatomo.initialize(
+      this.instanceId,
+      normalizedUrl,
+      siteId,
+      !!cachedQueue
+    );
   }
 
   /**
@@ -104,7 +83,7 @@ export class MatomoTracker {
    * Check if this tracker instance is initialized
    */
   async isInitialized(): Promise<boolean> {
-    return ReactNativeMatomo.isInitialized(this.instanceId);
+    return NativeReactNativeMatomo.isInitialized(this.instanceId);
   }
 
   /**
@@ -113,7 +92,7 @@ export class MatomoTracker {
    * @param title Optional screen title
    */
   async trackView(route: string, title?: string): Promise<void> {
-    return ReactNativeMatomo.trackView(this.instanceId, route, title);
+    return NativeReactNativeMatomo.trackView(this.instanceId, route, title ?? null);
   }
 
   /**
@@ -131,11 +110,14 @@ export class MatomoTracker {
     value?: number,
     url?: string
   ): Promise<void> {
-    return ReactNativeMatomo.trackEvent(this.instanceId, category, action, {
-      name,
-      value,
-      url,
-    });
+    return NativeReactNativeMatomo.trackEvent(
+      this.instanceId,
+      category,
+      action,
+      name ?? null,
+      value ?? -1,
+      url ?? null
+    );
   }
 
   /**
@@ -144,14 +126,18 @@ export class MatomoTracker {
    * @param revenue Optional revenue value
    */
   async trackGoal(goalId: number, revenue?: number): Promise<void> {
-    return ReactNativeMatomo.trackGoal(this.instanceId, goalId, { revenue });
+    return NativeReactNativeMatomo.trackGoal(
+      this.instanceId,
+      goalId,
+      revenue ?? -1
+    );
   }
 
   /**
    * Track app download (Android only)
    */
   async trackAppDownload(): Promise<void> {
-    return ReactNativeMatomo.trackAppDownload(this.instanceId);
+    return NativeReactNativeMatomo.trackAppDownload(this.instanceId);
   }
 
   /**
@@ -160,7 +146,7 @@ export class MatomoTracker {
    * @param value The dimension value, or null to remove
    */
   async setCustomDimension(id: number, value: string | null): Promise<void> {
-    return ReactNativeMatomo.setCustomDimension(this.instanceId, id, value);
+    return NativeReactNativeMatomo.setCustomDimension(this.instanceId, id, value);
   }
 
   /**
@@ -168,7 +154,7 @@ export class MatomoTracker {
    * @param userId The user ID, or null to clear
    */
   async setUserId(userId: string | null): Promise<void> {
-    return ReactNativeMatomo.setUserId(this.instanceId, userId);
+    return NativeReactNativeMatomo.setUserId(this.instanceId, userId);
   }
 
   /**
@@ -176,7 +162,7 @@ export class MatomoTracker {
    * @param isOptedOut Whether the app should opt out of tracking
    */
   async setAppOptOut(isOptedOut: boolean): Promise<void> {
-    return ReactNativeMatomo.setAppOptOut(this.instanceId, isOptedOut);
+    return NativeReactNativeMatomo.setAppOptOut(this.instanceId, isOptedOut);
   }
 
   /**
@@ -184,14 +170,14 @@ export class MatomoTracker {
    * @returns Whether the app is currently opted out of tracking
    */
   async isOptOut(): Promise<boolean> {
-    return ReactNativeMatomo.isOptOut(this.instanceId);
+    return NativeReactNativeMatomo.isOptOut(this.instanceId);
   }
 
   /**
    * Manually dispatch queued events
    */
   async dispatch(): Promise<void> {
-    return ReactNativeMatomo.dispatch(this.instanceId);
+    return NativeReactNativeMatomo.dispatch(this.instanceId);
   }
 
   /**
@@ -199,10 +185,10 @@ export class MatomoTracker {
    * @param seconds Interval in seconds (must be positive)
    */
   async setDispatchInterval(seconds: number): Promise<void> {
-    if (typeof seconds !== 'number' || seconds <= 0) {
+    if (typeof seconds !== 'number' || !isFinite(seconds) || seconds <= 0) {
       throw new Error('Invalid interval. The value must be a positive number.');
     }
-    return ReactNativeMatomo.setDispatchInterval(this.instanceId, seconds);
+    return NativeReactNativeMatomo.setDispatchInterval(this.instanceId, seconds);
   }
 
   /**
@@ -210,7 +196,7 @@ export class MatomoTracker {
    * @returns Interval in seconds
    */
   async getDispatchInterval(): Promise<number> {
-    return ReactNativeMatomo.getDispatchInterval(this.instanceId);
+    return NativeReactNativeMatomo.getDispatchInterval(this.instanceId);
   }
 
   /**
@@ -224,11 +210,11 @@ export class MatomoTracker {
     category?: string,
     resultCount?: number
   ): Promise<void> {
-    return ReactNativeMatomo.trackSiteSearch(
+    return NativeReactNativeMatomo.trackSiteSearch(
       this.instanceId,
       query,
-      category,
-      resultCount
+      category ?? null,
+      resultCount ?? -1
     );
   }
 
@@ -237,7 +223,7 @@ export class MatomoTracker {
    * @param options Options for stopping
    */
   async stop(options?: MatomoStopOptions): Promise<void> {
-    return ReactNativeMatomo.stop(
+    return NativeReactNativeMatomo.stop(
       this.instanceId,
       options?.dispatchRemaining ?? false
     );
@@ -247,14 +233,14 @@ export class MatomoTracker {
    * Reset the user ID (generates a new visitor ID)
    */
   async reset(): Promise<void> {
-    return ReactNativeMatomo.reset(this.instanceId);
+    return NativeReactNativeMatomo.reset(this.instanceId);
   }
 
   /**
    * Reset custom dimensions
    */
   async resetCustomDimensions(): Promise<void> {
-    return ReactNativeMatomo.resetCustomDimensions(this.instanceId);
+    return NativeReactNativeMatomo.resetCustomDimensions(this.instanceId);
   }
 
   /**
@@ -262,14 +248,14 @@ export class MatomoTracker {
    * @returns The user ID or null if not set
    */
   async getUserId(): Promise<string | null> {
-    return ReactNativeMatomo.getUserId(this.instanceId);
+    return NativeReactNativeMatomo.getUserId(this.instanceId);
   }
 
   /**
    * Start a new session for the next tracking event
    */
   async startNewSession(): Promise<void> {
-    return ReactNativeMatomo.startNewSession(this.instanceId);
+    return NativeReactNativeMatomo.startNewSession(this.instanceId);
   }
 }
 

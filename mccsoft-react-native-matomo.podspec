@@ -11,12 +11,11 @@ Pod::Spec.new do |s|
   s.authors       = package["author"]
 
   s.swift_version = '5.0'
-  s.platforms     = { :ios => "11.0", :tvos => "13.0" }
+  s.platforms     = { :ios => "15.1", :tvos => "15.1" }
   s.source        = { :git => "https://github.com/mccsoft/react-native-matomo.git", :tag => "#{s.version}" }
-
 
   s.source_files  = "ios/**/*.{h,m,mm,swift}"
 
-  s.dependency "React-Core"
+  install_modules_dependencies(s)
   s.dependency "MatomoTracker", "7.8.0"
 end
